@@ -1,15 +1,15 @@
 from numpy import *
 import codecs
 
-def loadDataSet():
-	postingList=[['my', 'dog', 'has', 'flea', 'problems', 'help', 'please'],
+def loadData():
+	pList=[['my', 'dog', 'has', 'flea', 'problems', 'help', 'please'],
 				['maybe', 'not', 'take', 'him', 'to', 'dog', 'park', 'stupid'],
 				['my', 'dalmation', 'is', 'so', 'cute', 'I', 'love', 'him'],
 				['stop', 'posting', 'stupid', 'worthless', 'garbage'],
 				['mr', 'licks', 'ate', 'my', 'steak', 'how', 'to', 'stop', 'him'],
 				['quit', 'buying', 'worthless', 'dog', 'food', 'stupid']]
 	classVec = [0,1,0,1,0,1]
-	return postingList, classVec
+	return pList, classVec
 
 def Create1(dataSet):
 	vocabSet = set([])
@@ -18,14 +18,20 @@ def Create1(dataSet):
 	return list(vocabSet)
 
 def Words2Vec(vocabList, inputSet):
-	returnVec = [0]*len(vocabList)
+	Vec_return = [0]*len(vocabList)
 	for word in inputSet:
 		if word in vocabList:
-			returnVec[vocabList.index(word)] = 1
+			Vec_return[vocabList.index(word)] = 1
 		else: 
 			print("the word: %s is not in my Vocablary!" % word)
-	return returnVec
+	return Vec_return
 
+def Words_bag(vocabList, inputSet):
+	Vec_return = [0]*len(vocabList)
+	for word in inputSet:
+		if word in vocabList:
+			Vec_return[vocabList.index(word)] += 1
+	return Vec_return
 
 def train(trainMatrix, trainCategory):
 	TrainDocs_num = len(trainMatrix)
@@ -47,7 +53,7 @@ def train(trainMatrix, trainCategory):
 	p0Vect = log(p0Num/p0Denom)
 	return p0Vect, p1Vect, pAbusive
 
-def classifyNB(vec2Classify, p0Vec, p1Vec, pClass1):
+def Classify(vec2Classify, p0Vec, p1Vec, pClass1):
 	p1 = sum(vec2Classify * p1Vec) + log(pClass1)
 	p0 = sum(vec2Classify * p0Vec) + log(1.0 - pClass1)
 	if p1 > p0:
@@ -55,39 +61,39 @@ def classifyNB(vec2Classify, p0Vec, p1Vec, pClass1):
 	else:
 		return 0
 
-def testingNB():
-	listOPosts, listClasses = loadDataSet()
-	myVocabList = createVocabList(listOPosts)
+def Test_NB():
+	list_Post,list_Classes = loadData()
+	myVocabList = Create1(list_Post)
 	trainMat = []
-	for postinDoc in listOPosts:
-		trainMat.append(setOfWords2Vec(myVocabList, postinDoc))
-	p0V, p1V, pAb = trainNB0(trainMat, listClasses)
+	for postinDoc in list_Post:
+		trainMat.append(Words2Vec(myVocabList, postinDoc))
+	p0V, p1V, pAb = train(trainMat,list_Classes)
 
 	testEntry = ['love', 'my', 'dalmation']
-	thisDoc = array(setOfWords2Vec(myVocabList, testEntry))
-	print(testEntry,'classified as: ', classifyNB(thisDoc, p0V, p1V, pAb))
+	thisDoc = array(Words2Vec(myVocabList, testEntry))
+	print(testEntry,'classified as: ', Classify(thisDoc, p0V, p1V, pAb))
 
 	testEntry = ['stupid', 'garbage']
-	thisDoc = array(setOfWords2Vec(myVocabList, testEntry))
-	print(testEntry,'classified as: ', classifyNB(thisDoc, p0V, p1V, pAb))
+	thisDoc = array(Words2Vec(myVocabList, testEntry))
+	print(testEntry,'classified as: ', Classify(thisDoc, p0V, p1V, pAb))
 
-def textParse(bigString):
+def Text(bigString):
 	import re
 	listOfTokens = re.split(r'\W*', bigString)
 	return [tok.lower() for tok in listOfTokens if len(tok) > 2]
  
-def spamTest():
+def Test_spam():
 	docList = []; classList = []; fullText = []
 	for i in range(1, 26):
-		wordList = textParse(open('email/spam/%d.txt' % i).read())
+		wordList = Text(open('email/spam/%d.txt' % i).read())
 		docList.append(wordList)
 		fullText.extend(wordList)
 		classList.append(1)
-		wordList = textParse(open('email/ham/%d.txt' % i).read())
+		wordList = Text(open('email/ham/%d.txt' % i).read())
 		docList.append(wordList)
 		fullText.extend(wordList)
 		classList.append(0)
-	vocabList = createVocabList(docList)
+	vocabList = Create1(docList)
 	trainingSet = list(range(50)); testSet = []
 	for i in range(10):
 		randIndex = int(random.uniform(0, len(trainingSet)))
@@ -95,13 +101,13 @@ def spamTest():
 		del(trainingSet[randIndex])
 	trainMat = []; trainClasses = []
 	for docIndex in trainingSet:
-		trainMat.append(bagOfWords2VecMN(vocabList, docList[docIndex]))
+		trainMat.append(Words_bag(vocabList, docList[docIndex]))
 		trainClasses.append(classList[docIndex])
-	p0V, p1V, pSpam = trainNB0(array(trainMat), array(trainClasses))
+	p0V, p1V, pSpam = train(array(trainMat), array(trainClasses))
 	errorCount = 0
 	for docIndex in testSet:
-		wordVector = bagOfWords2VecMN(vocabList, docList[docIndex])
-		if classifyNB(array(wordVector), p0V, p1V, pSpam) != classList[docIndex]:
+		wordVector = Words_bag(vocabList, docList[docIndex])
+		if Classify(array(wordVector), p0V, p1V, pSpam) != classList[docIndex]:
 			errorCount += 1
 			print("classification error",docList[docIndex])
 	print('the error rate is: ', float(errorCount)/len(testSet))
